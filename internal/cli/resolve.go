@@ -3,6 +3,7 @@ package cli
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -12,7 +13,7 @@ import (
 
 // resolveConfig loads the database config for the current directory. When the
 // project has none, it offers to create the default and loads it again.
-func resolveConfig(cmd *cobra.Command) (envconfig.Config, error) {
+func resolveConfig(cmd *cobra.Command, in io.Reader) (envconfig.Config, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return envconfig.Config{}, err
@@ -25,7 +26,7 @@ func resolveConfig(cmd *cobra.Command) (envconfig.Config, error) {
 	if !errors.As(err, &nc) {
 		return cfg, err
 	}
-	if _, err := envconfig.OfferDefaults(cmd.InOrStdin(), cmd.OutOrStdout(), nc, dir, name); err != nil {
+	if _, err := envconfig.OfferDefaults(in, cmd.OutOrStdout(), nc, dir, name); err != nil {
 		return envconfig.Config{}, err
 	}
 	return envconfig.Load(dir, envFile, name)
