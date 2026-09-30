@@ -1,96 +1,94 @@
 # custom-docker-db
 
-CLI que sobe um Postgres local em Docker já configurado com as credenciais do seu projeto. Ela lê o `.env` do diretório atual, extrai as variáveis `DB_*` / `DATABASE_*` e gera e executa um `docker compose` com essa configuração.
+A CLI that spins up a local database in Docker, already configured with your project's credentials. It reads the `.env` in the current directory, extracts the `DB_*` / `DATABASE_*` variables, then generates and runs a `docker compose` with that configuration.
 
-Hoje suporta apenas **Postgres**. O nome é genérico porque a ideia é evoluir para outros bancos no futuro.
+Today it supports **Postgres** only. The name is generic on purpose: the plan is to support other databases in the future.
 
-> **Status: em desenvolvimento.** Ainda não há release publicada e o comando `up` ainda não sobe o container. Veja o [andamento](#andamento).
+> **Status: under development.** There is no published release yet, and `up` does not start the container yet. See [progress](#progress).
 
-## Como vai funcionar
+## How it will work
 
 ```bash
-custom-docker-db                          # = up, descobre o .env em ./
-custom-docker-db up --env-file=.env.local # usa só este arquivo
-custom-docker-db up --ephemeral           # sem volume: os dados somem no down
-custom-docker-db down                     # para e remove o container, mantém o volume
-custom-docker-db exec                     # abre um shell (sh) dentro do container
+custom-docker-db                          # = up, discovers the .env in ./
+custom-docker-db up --env-file=.env.local # use only this file
+custom-docker-db up --ephemeral           # no volume: data is lost on down
+custom-docker-db down                     # stop and remove the container, keep the volume
+custom-docker-db exec                     # open a shell (sh) inside the container
 ```
 
-| Comando / flag | O que faz |
+| Command / flag | What it does |
 | --- | --- |
-| `up` (padrão) | Detecta a config, gera o compose, sobe o Postgres, espera o healthcheck e imprime a connection string |
-| `down` | Para e remove o container; o volume é mantido |
-| `exec` | Shell interativo dentro do container |
-| `--env-file=<path>` | Usa apenas este arquivo, sem descoberta automática |
-| `--ephemeral` | Sobe sem volume |
+| `up` (default) | Detects the config, generates the compose file, starts Postgres, waits for the healthcheck and prints the connection string |
+| `down` | Stops and removes the container; the volume is kept |
+| `exec` | Interactive shell inside the container |
+| `--env-file=<path>` | Use only this file, no automatic discovery |
+| `--ephemeral` | Start without a volume |
 
-A imagem é sempre `postgres:16-alpine`. Requer Docker com o plugin `docker compose` v2. Suporte: Linux (x64 e arm64).
+The image is always `postgres:16-alpine`. Requires Docker with the `docker compose` v2 plugin. Supported: Linux (x64 and arm64).
 
-## Como o `.env` é lido
+## How the `.env` is read
 
-Sem `--env-file`, a CLI procura, nesta ordem, só no diretório atual: `.env`, `.env.local`, `.env.development`. Só contam chaves que começam com `DB_` ou `DATABASE_` (sem diferenciar maiúsculas).
+Without `--env-file`, the CLI looks, in this order and only in the current directory, for: `.env`, `.env.local`, `.env.development`. Only keys starting with `DB_` or `DATABASE_` count (case-insensitive).
 
-| Arquivos com config de banco | Comportamento |
+| Files with database config | Behavior |
 | --- | --- |
-| 1 | Usa esse arquivo |
-| Mais de 1 | Lista os arquivos e encerra, pedindo para renomear (ou usar `--env-file`) |
-| Nenhum | Mostra o padrão e pergunta se pode criá-lo (ou acrescentá-lo ao `.env` existente) |
+| 1 | Uses that file |
+| More than 1 | Lists the files and exits, asking you to rename them (or use `--env-file`) |
+| None | Shows the default and asks whether it may create it (or append it to the existing `.env`) |
 
-| Chave | Vira | Padrão se ausente |
+| Key | Becomes | Default when missing |
 | --- | --- | --- |
 | `DB_USER` / `DB_USERNAME` | `POSTGRES_USER` | `postgres` |
 | `DB_PASSWORD` / `DB_PASS` | `POSTGRES_PASSWORD` | `postgres` |
-| `DB_NAME` / `DB_DATABASE` | `POSTGRES_DB` | nome da pasta |
-| `DB_PORT` | porta do host | `5432` |
-| `DB_HOST` | ignorado (o banco fica em `localhost`) | — |
-| `DB_URL` | usada só se não houver variáveis separadas | — |
+| `DB_NAME` / `DB_DATABASE` | `POSTGRES_DB` | directory name |
+| `DB_PORT` | host port | `5432` |
+| `DB_HOST` | ignored (the database is always on `localhost`) | — |
+| `DB_URL` | used only when there are no separate variables | — |
 
-`DATABASE_*` é equivalente a `DB_*`. Se o mesmo campo aparece com os dois prefixos no mesmo arquivo, a CLI pede para deixar só um. A interpolação `${VAR}` é suportada. Exemplo do padrão criado quando não há config:
+`DATABASE_*` is equivalent to `DB_*`. If the same field appears with both prefixes in the same file, the CLI asks you to keep only one. `${VAR}` interpolation is supported. The default written when there is no config:
 
 ```bash
 DB_USER=postgres
 DB_PASSWORD=postgres
-DB_NAME=nome-da-pasta
+DB_NAME=directory-name
 DB_PORT=5432
 ```
 
-## Andamento
+## Progress
 
-| Marco | Entrega | Status |
+| Milestone | Deliverable | Status |
 | --- | --- | --- |
-| M1 | Base do projeto: módulo Go, comandos `up`/`down`/`exec`, Makefile, CI | Concluído |
-| M2 | Leitura e parsing do `.env` | Concluído |
-| M3 | Oferta interativa do padrão | Concluído |
-| M4 | Compose gerado e `up` (Docker, porta, healthcheck, `--ephemeral`) | Não iniciado |
-| M5 | `down`, `exec` e mudança de config com pergunta sobre o volume | Não iniciado |
-| M6 | Distribuição: GoReleaser, `install.sh`, pacotes npm `@pvfm/*` | Não iniciado |
-| M7 | Release `v1.0.0` | Não iniciado |
+| M1 | Project base: Go module, `up`/`down`/`exec` commands, Makefile, CI | Done |
+| M2 | `.env` discovery and parsing | Done |
+| M3 | Interactive offer of the default config | Done |
+| M4 | Generated compose file and `up` (Docker, port, healthcheck, `--ephemeral`) | Not started |
+| M5 | `down`, `exec` and config change with a volume prompt | Not started |
+| M6 | Distribution: GoReleaser, `install.sh`, npm packages `@pvfm/*` | Not started |
+| M7 | `v1.0.0` release | Not started |
 
-A especificação completa está em [SPEC.md](SPEC.md).
+## Development
 
-## Desenvolvimento
-
-Requer Go 1.27 ou mais novo.
+Requires Go 1.27 or newer.
 
 ```bash
-make build   # gera bin/custom-docker-db
+make build   # builds bin/custom-docker-db
 make test    # go test ./...
 make lint    # go vet + gofmt
 ```
 
-Estrutura:
+Layout:
 
-- `cmd/custom-docker-db/`: `main` do binário
-- `internal/cli/`: comandos (`cobra`)
-- `internal/envconfig/`: descoberta e parsing do `.env`, oferta do padrão
+- `cmd/custom-docker-db/`: binary `main`
+- `internal/cli/`: commands (`cobra`)
+- `internal/envconfig/`: `.env` discovery and parsing, default config offer
 
-## Instalação
+## Installation
 
-Ainda não disponível. Após a v1, estará em:
+Not available yet. After v1 it will be available via:
 
 - `curl -fsSL https://raw.githubusercontent.com/pvfm/custom-docker-db/main/install.sh | sh`
 - `npx @pvfm/custom-docker-db`
 
-## Licença
+## License
 
 [MIT](LICENSE)
