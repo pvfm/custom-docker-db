@@ -4,9 +4,9 @@ A CLI that spins up a local database in Docker, already configured with your pro
 
 Today it supports **Postgres** only. The name is generic on purpose: the plan is to support other databases in the future.
 
-> **Status: under development.** There is no published release yet, and `up` does not start the container yet. See [progress](#progress).
+> **Status: feature-complete for v1, first release pending.** `up`, `down` and `exec` work; the `v1.0.0` release has not been published yet. See [progress](#progress).
 
-## How it will work
+## Usage
 
 ```bash
 custom-docker-db                          # = up, discovers the .env in ./
@@ -19,12 +19,16 @@ custom-docker-db exec                     # open a shell (sh) inside the contain
 | Command / flag | What it does |
 | --- | --- |
 | `up` (default) | Detects the config, generates the compose file, starts Postgres, waits for the healthcheck and prints the connection string |
-| `down` | Stops and removes the container; the volume is kept |
-| `exec` | Interactive shell inside the container |
+| `down` | Stops and removes the container; the volume is kept (in `--ephemeral` mode the data is deleted) |
+| `exec` | Interactive shell (`sh`) inside the running container |
 | `--env-file=<path>` | Use only this file, no automatic discovery |
 | `--ephemeral` | Start without a volume |
 
-The image is always `postgres:16-alpine`. Requires Docker with the `docker compose` v2 plugin. Supported: Linux (x64 and arm64).
+The image is always `postgres:16-alpine`. The port is published on `127.0.0.1` only, and the generated compose file lives in `~/.local/share/custom-docker-db/<dir>-<hash>/` (or `$XDG_DATA_HOME`). Requires Docker with the `docker compose` v2 plugin. Supported: Linux (x64 and arm64).
+
+### When the config changes
+
+Postgres only applies the user, password and database name when it first creates the volume. On `up`, if those changed since the last run, the CLI asks before deleting the volume and recreating the database; answering no leaves everything untouched. Changing only the port recreates the container and keeps your data.
 
 ## How the `.env` is read
 
@@ -61,10 +65,10 @@ DB_PORT=5432
 | M1 | Project base: Go module, `up`/`down`/`exec` commands, Makefile, CI | Done |
 | M2 | `.env` discovery and parsing | Done |
 | M3 | Interactive offer of the default config | Done |
-| M4 | Generated compose file and `up` (Docker, port, healthcheck, `--ephemeral`) | Not started |
-| M5 | `down`, `exec` and config change with a volume prompt | Not started |
-| M6 | Distribution: GoReleaser, `install.sh`, npm packages `@pvfm/*` | Not started |
-| M7 | `v1.0.0` release | Not started |
+| M4 | Generated compose file and `up` (Docker, port, healthcheck, `--ephemeral`) | Done |
+| M5 | `down`, `exec` and config change with a volume prompt | Done |
+| M6 | Distribution: GoReleaser, `install.sh`, npm packages `@pvfm/*` | Done |
+| M7 | `v1.0.0` release | In progress (ready to tag) |
 
 ## Development
 
@@ -81,13 +85,33 @@ Layout:
 - `cmd/custom-docker-db/`: binary `main`
 - `internal/cli/`: commands (`cobra`)
 - `internal/envconfig/`: `.env` discovery and parsing, default config offer
+- `internal/engine/`: database-specific definition (image, env, healthcheck, URL)
+- `internal/compose/`: compose file rendering and location
+- `internal/docker/`: docker CLI wrapper
+- `internal/prompt/`: yes/no confirmation
+- `npm/`, `scripts/`, `install.sh`, `.goreleaser.yaml`: distribution
 
 ## Installation
 
-Not available yet. After v1 it will be available via:
+Not available yet: the release pipeline is ready, but the first release (`v1.0.0`) has not been published. Once it is:
 
-- `curl -fsSL https://raw.githubusercontent.com/pvfm/custom-docker-db/main/install.sh | sh`
-- `npx @pvfm/custom-docker-db`
+```bash
+# Linux x64 / arm64, installs to ~/.local/bin
+curl -fsSL https://raw.githubusercontent.com/pvfm/custom-docker-db/main/install.sh | sh
+
+# or with npm
+npx @pvfm/custom-docker-db
+```
+
+`install.sh` verifies the SHA-256 of the download. Set `CDD_VERSION=v1.0.0` to pin a version or `CDD_INSTALL_DIR` to change the destination.
+
+## Releasing
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`: GoReleaser publishes the GitHub release (binaries + `checksums.txt`), then the npm packages are published. This needs an `NPM_TOKEN` repository secret and the `@pvfm` scope on npm.
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```
 
 ## License
 
