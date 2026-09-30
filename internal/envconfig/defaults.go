@@ -1,7 +1,6 @@
 package envconfig
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io"
@@ -9,6 +8,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/pvfm/custom-docker-db/internal/prompt"
 )
 
 // ErrDeclined means the user chose not to create the default config.
@@ -56,16 +57,11 @@ func OfferDefaults(in io.Reader, out io.Writer, nc *NoConfigError, dir, dbName s
 		fmt.Fprintln(out, "  "+l)
 	}
 	fmt.Fprintln(out)
+	question := fmt.Sprintf("Criar %s com esse padrão? [s/N] ", target)
 	if exists {
-		fmt.Fprintf(out, "Acrescentar ao final de %s? [s/N] ", target)
-	} else {
-		fmt.Fprintf(out, "Criar %s com esse padrão? [s/N] ", target)
+		question = fmt.Sprintf("Acrescentar ao final de %s? [s/N] ", target)
 	}
-
-	answer, _ := bufio.NewReader(in).ReadString('\n')
-	switch strings.ToLower(strings.TrimSpace(answer)) {
-	case "s", "sim", "y", "yes":
-	default:
+	if !prompt.Confirm(in, out, question) {
 		fmt.Fprintln(out)
 		return "", ErrDeclined
 	}
