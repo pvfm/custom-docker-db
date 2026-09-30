@@ -1,0 +1,44 @@
+version: 2
+project_name: custom-docker-db
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: custom-docker-db
+    main: ./cmd/custom-docker-db
+    binary: custom-docker-db
+    env:
+      - CGO_ENABLED=0
+    goos: [linux]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X github.com/pvfm/custom-docker-db/internal/cli.Version={{ .Version }}
+
+# Asset names carry no version so install.sh can use
+# releases/latest/download/<name> without calling the GitHub API.
+archives:
+  - id: default
+    formats: [tar.gz]
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+
+release:
+  github:
+    owner: pvfm
+    name: custom-docker-db
